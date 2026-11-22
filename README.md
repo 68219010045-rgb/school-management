@@ -113,3 +113,13 @@ my-app/
 - ห้าม commit `server/.env` และ `server/.seed-credentials.txt` (อยู่ใน `.gitignore` แล้ว) — ค่าลับใส่ผ่านหน้า Settings → Environment Variables ของ Vercel เท่านั้น
 - ฐานข้อมูล (Supabase) ใช้ร่วมกับตอนพัฒนา ถ้าจะแยกชุดสำหรับใช้งานจริง ให้สร้างโครงการ Supabase ใหม่แล้วรัน `npm run db:apply`, `npm run seed`, `npm run import:handoff`
 - Vercel รองรับ Node 18/20/22 จึงตั้ง `engines` เป็น `22.x` (เครื่องพัฒนาใช้ Node 26 ได้ตามปกติ)
+
+### ลิงก์ที่ใช้งานอยู่
+
+| ส่วน | ลิงก์ |
+|---|---|
+| หน้าเว็บ (frontend) | https://school-management-web-vert.vercel.app |
+| API (backend) | https://school-management-api-ten-mauve.vercel.app · ตรวจสุขภาพ: `/api/health` |
+| โค้ด | https://github.com/68219010045-rgb/school-management |
+
+อัปเดตโค้ดด้วย `npx vercel deploy --prod` ในโฟลเดอร์ `server` (backend) และโฟลเดอร์ราก (frontend) · ถ้าต้องการให้ deploy อัตโนมัติทุกครั้งที่ push ให้เชื่อมบัญชี GitHub ที่ Vercel (Settings → Authentication) แล้วรัน `vercel git connect`

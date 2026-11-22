@@ -57,3 +57,6 @@ server/.vercel
 # ไฟล์ชั่วคราว
 *.log
 server/node_modules
+
+.vercel
+.env*
