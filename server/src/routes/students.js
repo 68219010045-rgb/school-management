@@ -8,6 +8,9 @@ const {
 
 const router = express.Router();
 
+// ครูและนักเรียนใช้เส้นทางของตัวเอง (/api/teacher, /api/student) — ห้ามเข้ารายชื่อรวม
+router.use(requireRole('admin', 'executive'));
+
 // ความเป็นส่วนตัว (handoff X6): ชื่อ / เบอร์โทร / วันเกิด เห็นได้เฉพาะ admin
 // ผู้บริหารเห็นรหัสนักเรียนและข้อมูลที่ไม่ระบุตัวตน
 const PUBLIC_COLS = 'student_id, gender, level, admission_date, status, status_date, distance_km, dept_id, departments(dept_name_th)';

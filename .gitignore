@@ -43,6 +43,8 @@ next-env.d.ts
 # project
 server/.env
 server/.seed-credentials.txt
+server/.teacher-credentials.txt
+server/.student-credentials.txt
 .env.local
 
 # --- เพิ่มสำหรับการขึ้น GitHub / Vercel ---

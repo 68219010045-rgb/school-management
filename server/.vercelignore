@@ -1,0 +1,9 @@
+# ห้ามอัปโหลดไฟล์ลับและไฟล์ที่ไม่ใช้ตอนรัน
+.env*
+*credentials*
+.vercel
+node_modules
+scripts
+sql
+test
+*.log

@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './auth';
+import { AuthProvider, HOME, useAuth } from './auth';
 import Layout from './components/Layout';
 import Login from './views/Login';
 import Dashboard from './views/Dashboard';
@@ -10,6 +10,9 @@ import Enrollments from './views/Enrollments';
 import AtRisk from './views/AtRisk';
 import Tasks from './views/Tasks';
 import ChangeLog from './views/ChangeLog';
+import MyClasses from './views/MyClasses';
+import MyInfo from './views/MyInfo';
+import TeacherDashboard from './views/TeacherDashboard';
 
 // ต้องล็อกอินก่อน (Y2.4) และตรวจบทบาทที่ได้รับอนุญาต
 function Protected({ roles, children }) {
@@ -28,8 +31,16 @@ function Protected({ roles, children }) {
   return children;
 }
 
+const STAFF = ['admin', 'executive'];
+
+// หน้าแรกต่างกันตามบทบาท
+function RoleHome() {
+  const { user } = useAuth();
+  return <Navigate to={HOME[user.role] || '/dashboard'} replace />;
+}
+
 function NotFound() {
-  return <div className="card"><h1>ไม่พบหน้านี้</h1><p>ตรวจสอบลิงก์อีกครั้ง หรือกลับไปที่แดชบอร์ด</p></div>;
+  return <div className="card"><h1>ไม่พบหน้านี้</h1><p>ตรวจสอบลิงก์อีกครั้ง หรือกลับไปที่หน้าหลัก</p></div>;
 }
 
 export default function App() {
@@ -39,15 +50,18 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<Protected><Layout /></Protected>}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/students" element={<Students />} />
+            <Route index element={<RoleHome />} />
+            <Route path="/dashboard" element={<Protected roles={STAFF}><Dashboard /></Protected>} />
+            <Route path="/students" element={<Protected roles={STAFF}><Students /></Protected>} />
             <Route path="/students/new" element={<Protected roles={['admin']}><StudentForm /></Protected>} />
             <Route path="/students/import" element={<Protected roles={['admin']}><ImportStudents /></Protected>} />
             <Route path="/students/:id/edit" element={<Protected roles={['admin']}><StudentForm /></Protected>} />
-            <Route path="/enrollments" element={<Enrollments />} />
-            <Route path="/at-risk" element={<Protected roles={['admin']}><AtRisk /></Protected>} />
-            <Route path="/tasks" element={<Protected roles={['admin']}><Tasks /></Protected>} />
+            <Route path="/enrollments" element={<Protected roles={STAFF}><Enrollments /></Protected>} />
+            <Route path="/teacher-dashboard" element={<Protected roles={['teacher']}><TeacherDashboard /></Protected>} />
+            <Route path="/my-classes" element={<Protected roles={['teacher']}><MyClasses /></Protected>} />
+            <Route path="/my-info" element={<Protected roles={['student']}><MyInfo /></Protected>} />
+            <Route path="/at-risk" element={<Protected roles={['admin', 'executive']}><AtRisk /></Protected>} />
+            <Route path="/tasks" element={<Protected roles={['admin', 'executive']}><Tasks /></Protected>} />
             <Route path="/changelog" element={<Protected roles={['admin']}><ChangeLog /></Protected>} />
             <Route path="*" element={<NotFound />} />
           </Route>

@@ -12,7 +12,7 @@ async function authenticate(req, res, next) {
     if (error || !data.user) return res.status(401).json({ error: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' });
 
     const { data: profile, error: pErr } = await sb
-      .from('profiles').select('email, display_name, role').eq('id', data.user.id).maybeSingle();
+      .from('profiles').select('*').eq('id', data.user.id).maybeSingle();
     if (pErr) throw pErr;
     if (!profile) return res.status(403).json({ error: 'บัญชีนี้ยังไม่ได้กำหนดบทบาท' });
 

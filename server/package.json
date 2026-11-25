@@ -8,10 +8,13 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node scripts/seed.js",
+    "accounts:teachers": "node scripts/create-teacher-accounts.js",
+    "accounts:students": "node scripts/create-student-accounts.js",
     "test": "node --test",
     "import:handoff": "node scripts/import-handoff.js",
     "db:apply": "node scripts/apply-schema.js",
-    "db:migrate-roles": "node scripts/migrate-roles.js"
+    "db:migrate-roles": "node scripts/migrate-roles.js",
+    "db:migrate-teacher-student": "node scripts/migrate-teacher-student.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

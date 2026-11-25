@@ -24,7 +24,10 @@ if (!url || url.includes('[YOUR-PASSWORD]')) {
   await client.connect();
   try {
     await client.query(sql);
-    console.log('✓ รัน schema.sql สำเร็จ');
+    for (const file of ['roles.sql', 'class_attendance.sql', 'attendance_counting.sql', 'coursework.sql']) {
+      await client.query(fs.readFileSync(path.join(__dirname, '..', 'sql', file), 'utf8').replace(/^\uFEFF/, ''));
+    }
+    console.log('✓ รัน schema.sql · roles.sql · class_attendance.sql · attendance_counting.sql · coursework.sql สำเร็จ');
   } finally {
     await client.end();
   }

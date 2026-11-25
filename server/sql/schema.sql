@@ -4,6 +4,7 @@
 -- วิธีใช้: Supabase > SQL Editor > วางทั้งไฟล์ > Run   (หรือ: npm run db:apply เมื่อมี DATABASE_URL)
 -- ⚠ ไฟล์นี้ลบตารางสาธิตรุ่นแรก (students/courses/enrollments/attendance ฯลฯ) แล้วสร้างใหม่
 --   บัญชีผู้ใช้ (profiles) และ Supabase Auth ไม่ถูกลบ
+-- ⚠ ถ้าวางใน SQL Editor เอง ต้องรัน roles.sql · class_attendance.sql · attendance_counting.sql · coursework.sql ต่อทุกครั้ง (npm run db:apply ทำให้อัตโนมัติ)
 -- รันซ้ำได้ — แต่จะล้างข้อมูลในตารางข้อมูลทุกครั้ง ต้องรัน npm run import:handoff ใหม่
 -- =====================================================================
 

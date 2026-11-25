@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ROLE_LABEL, useAuth } from '../auth';
+import { HOME, ROLE_LABEL, useAuth } from '../auth';
 
 const NAV = [
+  { group: 'ของฉัน', items: [
+    { to: '/teacher-dashboard', label: 'แดชบอร์ดครู', roles: ['teacher'] },
+    { to: '/my-classes', label: 'วิชาที่สอน', roles: ['teacher'] },
+    { to: '/my-info', label: 'ข้อมูลของฉัน', roles: ['student'] },
+  ] },
   { group: 'ภาพรวม', items: [{ to: '/dashboard', label: 'แดชบอร์ดผู้บริหาร', roles: ['admin', 'executive'] }] },
   { group: 'ข้อมูลสถานศึกษา', items: [
     { to: '/students', label: 'นักเรียน', end: true, roles: ['admin', 'executive'] },
     { to: '/enrollments', label: 'ผลการเรียน', roles: ['admin', 'executive'] },
   ] },
   { group: 'การตัดสินใจ', items: [
-    { to: '/at-risk', label: 'นักเรียนเสี่ยง', roles: ['admin'] },
-    { to: '/tasks', label: 'ข้อค้นพบ → งานที่ควรทำ', roles: ['admin'] },
+    { to: '/at-risk', label: 'นักเรียนเสี่ยง', roles: ['admin', 'executive'] },
+    { to: '/tasks', label: 'ข้อค้นพบ → งานที่ควรทำ', roles: ['admin', 'executive'] },
   ] },
   { group: 'การตรวจสอบ', items: [
     { to: '/changelog', label: 'ประวัติการแก้ไข', roles: ['admin'] },
@@ -24,7 +29,7 @@ const NAV = [
 const TITLES = {
   '/dashboard': 'แดชบอร์ดผู้บริหาร', '/students': 'นักเรียน', '/students/new': 'เพิ่มนักเรียน', '/students/import': 'นำเข้าจากไฟล์ CSV',
   '/enrollments': 'ผลการเรียน', '/at-risk': 'นักเรียนเสี่ยง', '/tasks': 'ข้อค้นพบ → งานที่ควรทำ',
-  '/changelog': 'ประวัติการแก้ไข',
+  '/changelog': 'ประวัติการแก้ไข', '/teacher-dashboard': 'แดชบอร์ดครู', '/my-classes': 'วิชาที่สอน', '/my-info': 'ข้อมูลของฉัน',
 };
 
 const safe = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } } };
@@ -50,16 +55,16 @@ export default function Layout() {
   const toggleNav = () => setCollapsed((c) => { safe.set('school_nav', c ? '1' : '0'); return !c; });
 
   const title = TITLES[pathname] || (pathname.endsWith('/edit') ? 'แก้ไขข้อมูลนักเรียน' : 'หน้านี้');
-  const crumbs = [{ to: '/dashboard', label: 'หน้าหลัก' }];
+  const crumbs = [{ to: '/', label: 'หน้าหลัก' }];
   if (pathname.startsWith('/students/') && pathname !== '/students') crumbs.push({ to: '/students', label: 'นักเรียน' });
-  if (pathname !== '/dashboard') crumbs.push({ label: title });
+  if (pathname !== HOME[user.role]) crumbs.push({ label: title });
 
   return (
     <div className={`app${collapsed ? ' collapsed' : ''}`}>
       <a href="#main" className="skip">ข้ามไปที่เนื้อหา</a>
       <header className="topbar">
         <button type="button" className="icon-btn" onClick={toggleNav} aria-label={collapsed ? 'เปิดเมนู' : 'ปิดเมนู'} aria-expanded={!collapsed}>☰</button>
-        <Link to="/dashboard" className="brand"><span>ระบบจัดการโรงเรียน</span></Link>
+        <Link to="/" className="brand"><span>ระบบจัดการโรงเรียน</span></Link>
         <span className="spacer" />
         <button type="button" className="icon-btn" onClick={toggleTheme} aria-label={theme === 'dark' ? 'สลับเป็นธีมสว่าง' : 'สลับเป็นธีมมืด'} title="สลับธีม">{theme === 'dark' ? '☀' : '☾'}</button>
         <div className="user">

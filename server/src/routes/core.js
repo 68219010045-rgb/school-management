@@ -28,7 +28,7 @@ router.get('/meta', wrap(async (_req, res) => {
 }));
 
 // GET /api/dashboard?term_id=1/2569&dept_id=D01 — KPI 6 ตัว + กราฟ 8 รูป (ฐานข้อมูลสรุปให้ด้วย RPC)
-router.get('/dashboard', wrap(async (req, res) => {
+router.get('/dashboard', requireRole('admin', 'executive'), wrap(async (req, res) => {
   const f = dashFilterSchema.parse(req.query);
   const flt = { p_term: f.term_id, p_dept: f.dept_id };
   const [kpi, perTerm, dropout, hist, box, room, scatter, weekly, regIn] = await Promise.all([
@@ -58,7 +58,7 @@ router.get('/dashboard', wrap(async (req, res) => {
 }));
 
 // GET /api/enrollments — อ่านทีละหน้า ไม่ดึงทั้งตาราง (B3.4) ไม่มีชื่อนักเรียน (ใช้รหัส)
-router.get('/enrollments', wrap(async (req, res) => {
+router.get('/enrollments', requireRole('admin', 'executive'), wrap(async (req, res) => {
   const { page, pageSize } = pageSchema.parse(req.query);
   const from = (page - 1) * pageSize;
   let q = getAdmin().from('enrollments')
@@ -72,8 +72,8 @@ router.get('/enrollments', wrap(async (req, res) => {
   res.json({ rows: data, total: count, page, pageSize });
 }));
 
-// GET /api/at-risk — นักเรียนเสี่ยง (รหัสเท่านั้น) สำหรับครูที่ปรึกษา: เฉพาะ admin
-router.get('/at-risk', requireRole('admin'), wrap(async (req, res) => {
+// GET /api/at-risk — นักเรียนเสี่ยง (รหัสเท่านั้น) สำหรับครูที่ปรึกษา: admin และผู้บริหาร (ดูอย่างเดียว)
+router.get('/at-risk', requireRole('admin', 'executive'), wrap(async (req, res) => {
   const { page, pageSize } = pageSchema.parse(req.query);
   const from = (page - 1) * pageSize;
   let q = getAdmin().from('at_risk').select('*', { count: 'exact' })

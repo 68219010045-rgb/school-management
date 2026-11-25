@@ -1,6 +1,7 @@
 /**
- * สร้างบัญชีทดสอบ 2 บทบาท (ผู้ดูแล · ผู้บริหาร) และลบบัญชีบทบาทเก่า (กรรมการ · ผู้ชม) ถ้ายังมี
+ * สร้างบัญชีทดสอบ 4 บทบาท (ผู้ดูแล · ผู้บริหาร · ครู · นักเรียน) และลบบัญชีบทบาทเก่า (กรรมการ · ผู้ชม) ถ้ายังมี
  * รัน: npm run seed
+ * สร้างเฉพาะบางบทบาทโดยไม่รีเซ็ตรหัสผ่านบัญชีอื่น: npm run seed -- --only=teacher,student
  * ข้อมูลโรงเรียนนำเข้าด้วย: npm run import:handoff
  */
 const fs = require('fs');
@@ -25,10 +26,15 @@ const randomPassword = () => crypto.randomBytes(9).toString('base64').replace(/[
     process.exit(1);
   }
 
-  const accounts = [
+  const only = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
+  const all = [
     { email: 'admin@school.example.com', name: 'ผู้ดูแลระบบ (ทดสอบ)', role: 'admin', env: 'SEED_ADMIN_PASSWORD' },
     { email: 'executive@school.example.com', name: 'ผู้บริหาร (ทดสอบ)', role: 'executive', env: 'SEED_EXECUTIVE_PASSWORD' },
+    { email: 'teacher@school.example.com', name: 'ครู (ทดสอบ)', role: 'teacher', env: 'SEED_TEACHER_PASSWORD', link: { teacher_id: 'T009' } },
+    { email: 'student@school.example.com', name: 'นักเรียน (ทดสอบ)', role: 'student', env: 'SEED_STUDENT_PASSWORD', link: { student_id: 'S68003' } },
   ];
+  const accounts = only.length ? all.filter((a) => only.includes(a.role)) : all;
+  if (!accounts.length) throw new Error('ไม่รู้จักบทบาทใน --only (ใช้ได้: admin, executive, teacher, student)');
   const { data: list, error: lErr } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (lErr) throw lErr;
 
@@ -52,11 +58,17 @@ const randomPassword = () => crypto.randomBytes(9).toString('base64').replace(/[
       if (error) throw error;
       id = data.user.id;
     }
-    const { error: pErr } = await sb.from('profiles').upsert({ id, email: a.email, display_name: a.name, role: a.role });
+    const { error: pErr } = await sb.from('profiles').upsert({ id, email: a.email, display_name: a.name, role: a.role, ...a.link });
     if (pErr) throw pErr;
     lines.push(`${a.role.padEnd(10)} ${a.email}   รหัสผ่าน: ${password}`);
   }
   const file = path.join(__dirname, '..', '.seed-credentials.txt');
+  // เก็บบรรทัดของบัญชีที่ไม่ได้สร้างรอบนี้ไว้ (กรณีใช้ --only)
+  if (only.length && fs.existsSync(file)) {
+    const done = new Set(accounts.map((a) => a.email));
+    const kept = fs.readFileSync(file, 'utf8').split(/\r?\n/).filter((l) => l.includes('@') && !done.has(l.trim().split(/\s+/)[1]));
+    lines.splice(2, 0, ...kept);
+  }
   fs.writeFileSync(file, lines.join('\n') + '\n');
-  console.log(`✓ สร้างบัญชีทดสอบ 2 บทบาทแล้ว — ดูอีเมล/รหัสผ่านใน ${file}`);
+  console.log(`✓ สร้างบัญชีทดสอบ ${accounts.length} บัญชีแล้ว — ดูอีเมล/รหัสผ่านใน ${file}`);
 })().catch((e) => { console.error('Seed ล้มเหลว:', e.message || e); process.exit(1); });

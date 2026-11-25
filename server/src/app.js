@@ -38,6 +38,8 @@ function createApp() {
   app.use('/api', authenticate);
   app.use('/api/students', require('./routes/students'));
   app.use('/api/tasks', require('./routes/tasks'));
+  app.use('/api/teacher', require('./routes/teacher'));
+  app.use('/api/student', require('./routes/student'));
   app.use('/api', require('./routes/core'));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'ไม่พบเส้นทางนี้' }));

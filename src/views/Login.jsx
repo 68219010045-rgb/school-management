@@ -11,7 +11,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (ready && user) return <Navigate to={(location.state && location.state.from) || '/dashboard'} replace />;
+  if (ready && user) return <Navigate to={(location.state && location.state.from) || '/'} replace />;
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -20,7 +20,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(email.trim(), password);
-      navigate((location.state && location.state.from) || '/dashboard', { replace: true });
+      navigate((location.state && location.state.from) || '/', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -35,7 +35,7 @@ export default function Login() {
           <strong>ระบบจัดการโรงเรียน</strong>
         </div>
         <h1 id="login-title" style={{ fontSize: '1.4rem' }}>เข้าสู่ระบบ</h1>
-        <p className="muted login-sub" style={{ marginBottom: '1.1rem' }}>สำหรับผู้ดูแลและผู้บริหาร</p>
+        <p className="muted login-sub" style={{ marginBottom: '1.1rem' }}>สำหรับผู้ดูแล ผู้บริหาร ครู และนักเรียน</p>
 
         <div className="field">
           <label htmlFor="email">อีเมล</label>

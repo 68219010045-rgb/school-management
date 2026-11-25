@@ -4,7 +4,8 @@ import { api, tokenStore } from './api';
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
-export const ROLE_LABEL = { admin: 'ผู้ดูแล', executive: 'ผู้บริหาร' };
+export const ROLE_LABEL = { admin: 'ผู้ดูแล', executive: 'ผู้บริหาร', teacher: 'ครู', student: 'นักเรียน' };
+export const HOME = { admin: '/dashboard', executive: '/dashboard', teacher: '/teacher-dashboard', student: '/my-info' };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);

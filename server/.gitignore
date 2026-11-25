@@ -1,2 +1,4 @@
 .vercel
 .env*
+.teacher-credentials.txt
+.student-credentials.txt

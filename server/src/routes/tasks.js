@@ -6,8 +6,8 @@ const { taskSchema, taskUpdateSchema } = require('../validation');
 
 const router = express.Router();
 
-// เฉพาะ admin เข้าได้ทั้งอ่านและแก้ไข (ผู้บริหารเข้าไม่ได้)
-router.get('/', requireRole('admin'), wrap(async (_req, res) => {
+// admin อ่านและแก้ไขได้ ผู้บริหารอ่านได้อย่างเดียว
+router.get('/', requireRole('admin', 'executive'), wrap(async (_req, res) => {
   const { data, error } = await getAdmin().from('tasks').select('*').order('id');
   if (error) throw error;
   res.json({ rows: data });
