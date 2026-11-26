@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Empty, ErrorBox, Loading, PageHeader, fmt, useFetch } from '../components/UI';
 import { toThaiDate } from '../utils/thaiDate';
@@ -17,7 +18,10 @@ export default function MyInfo() {
 
   return (
     <>
-      <PageHeader title="ข้อมูลของฉัน" subtitle={`${p.student_id} · ${p.full_name}`} />
+      <PageHeader title="ข้อมูลของฉัน" subtitle={`${p.student_id} · ${p.full_name}`}>
+        <Link className="btn" to="/my-scores">คะแนนเก็บ</Link>
+        <Link className="btn" to="/my-history">ประวัติการขาด ลา มาสาย</Link>
+      </PageHeader>
       <section className="card" aria-labelledby="me-h">
         <header><h2 id="me-h">ข้อมูลส่วนตัว</h2></header>
         <div className="table-wrap">
@@ -72,63 +76,6 @@ export default function MyInfo() {
         </section>
       )}
 
-      {term && term.courses.length > 0 && (
-        <section className="card" aria-labelledby="cw-h">
-          <header><h2 id="cw-h">คะแนนเก็บ · ภาค {term.term_id}</h2></header>
-          <p className="muted small">คะแนนเก็บแยกจากคะแนนรวมที่ใช้ตัดเกรด · ยอดสะสมคิดเฉพาะรายการที่ครูกรอกคะแนนแล้ว</p>
-          {!term.courses.some((c) => c.coursework.length) ? <Empty text="ยังไม่มีคะแนนเก็บ" /> : term.courses.filter((c) => c.coursework.length).map((c) => {
-            const done = c.coursework.filter((i) => i.score !== null);
-            return (
-              <div key={c.enrollment_id} style={{ marginBottom: '1rem' }}>
-                <h3>{c.subject_code} {c.subject_name} · สะสม {done.reduce((n, i) => n + i.score, 0)} / {done.reduce((n, i) => n + i.max_score, 0)}</h3>
-                <div className="table-wrap"><table>
-                  <thead><tr><th>รายการ</th><th className="num">คะแนนที่ได้</th><th className="num">คะแนนเต็ม</th></tr></thead>
-                  <tbody>{c.coursework.map((i) => (
-                    <tr key={i.id}><td>{i.name}</td><td className="num">{i.score ?? 'ยังไม่มีคะแนน'}</td><td className="num">{i.max_score}</td></tr>
-                  ))}</tbody>
-                </table></div>
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      {term && (
-        <section className="card" aria-labelledby="hist-h">
-          <header><h2 id="hist-h">ประวัติการขาด ลา มาสาย · ภาค {term.term_id}</h2></header>
-          <p>รวมทั้งภาค: {att ? <><strong>ขาด {att.absent}</strong> วัน · <strong>ลา {att.leave}</strong> วัน · <strong>สาย {att.late}</strong> ครั้ง</> : 'ยังไม่มีข้อมูล'}</p>
-
-          {term.is_current && (
-            <>
-              <h3>รายคาบ (จากการเช็คชื่อ)</h3>
-              {term.history.length === 0 ? <Empty text="ไม่มีคาบที่ขาด ลา หรือสาย ในการเช็คชื่อ" /> : (
-                <div className="table-wrap"><table>
-                  <thead><tr><th>วันที่</th><th className="num">คาบ</th><th>วิชา</th><th>สถานะ</th></tr></thead>
-                  <tbody>{term.history.map((h) => (
-                    <tr key={`${h.date}-${h.period}-${h.subject}`}>
-                      <td>{toThaiDate(h.date)}</td><td className="num">{h.period}</td><td>{h.subject}</td>
-                      <td><span className={`tag ${h.status === 'ขาด' ? 'high' : 'mid'}`}>{h.status}</span></td>
-                    </tr>
-                  ))}</tbody>
-                </table></div>
-              )}
-            </>
-          )}
-
-          <h3>รายสัปดาห์</h3>
-          {term.weeks.length === 0 ? <Empty text="ไม่มีสัปดาห์ที่ขาด ลา หรือสาย" /> : (
-            <div className="table-wrap"><table>
-              <thead><tr><th className="num">สัปดาห์ที่</th><th>เริ่มวันที่</th><th className="num">ขาด (วัน)</th><th className="num">ลา (วัน)</th><th className="num">สาย (ครั้ง)</th></tr></thead>
-              <tbody>{term.weeks.map((w) => (
-                <tr key={w.week_no}>
-                  <td className="num">{w.week_no}</td><td>{toThaiDate(w.week_start_date)}</td>
-                  <td className="num">{w.absent}</td><td className="num">{w.leave}</td><td className="num">{w.late}</td>
-                </tr>
-              ))}</tbody>
-            </table></div>
-          )}
-        </section>
-      )}
     </>
   );
 }

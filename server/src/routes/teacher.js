@@ -2,9 +2,8 @@ const express = require('express');
 const { getAdmin } = require('../supabase');
 const { requireRole, wrap } = require('../middleware');
 const { logChange } = require('../changelog');
-const { scoreSchema, attendanceSchema } = require('../validation');
+const { attendanceSchema } = require('../validation');
 const { sessionDates, classPeriods } = require('../sessions');
-const { gradeFromScore } = require('../grading');
 const { loadTerms } = require('../terms');
 const { teacherSummary } = require('../teacherSummary');
 
@@ -74,43 +73,6 @@ router.get('/classes/:id', wrap(async (req, res) => {
       risk_tier: tier.get(e.student_id) || null,
     })),
   });
-}));
-
-// PUT /api/teacher/enrollments/:id { total_score } — เฉพาะวิชาตัวเอง ในภาคปัจจุบัน และบันทึกประวัติทุกครั้ง
-router.put('/enrollments/:id', wrap(async (req, res) => {
-  const { total_score: score } = scoreSchema.parse(req.body);
-  const sb = getAdmin();
-  const { data: before, error: bErr } = await sb.from('enrollments')
-    .select('enrollment_id, schedule_id, term_id, total_score, grade, score_status')
-    .eq('enrollment_id', req.params.id).maybeSingle();
-  if (bErr) throw bErr;
-  // ตอบเหมือนกันทั้ง "ไม่มีแถว" และ "ไม่ใช่วิชาของคุณ" เพื่อไม่ให้เดารหัสได้
-  if (!before || !(await ownClass(before.schedule_id, req.user.teacher_id))) {
-    return res.status(404).json({ error: 'ไม่พบรายการลงทะเบียนในวิชาของคุณ' });
-  }
-  const terms = await loadTerms();
-  if (!terms.some((t) => t.term_id === before.term_id && t.is_current)) {
-    return res.status(403).json({ error: 'แก้คะแนนได้เฉพาะภาคเรียนปัจจุบัน' });
-  }
-
-  const patch = {
-    total_score: score,
-    grade: gradeFromScore(score),
-    score_status: score === null ? 'pending_current_term' : 'graded',
-  };
-  const { data, error } = await sb.from('enrollments').update(patch).eq('enrollment_id', before.enrollment_id)
-    .select('enrollment_id, student_id, total_score, grade, score_status').single();
-  if (error) throw error;
-
-  const oldScore = before.total_score === null ? null : Number(before.total_score);
-  if (oldScore !== score) {
-    await logChange({
-      table: 'enrollments', recordId: before.enrollment_id, action: 'UPDATE', actor: req.user,
-      before: { total_score: oldScore, grade: before.grade },
-      after: { total_score: score, grade: patch.grade },
-    });
-  }
-  res.json(data);
 }));
 
 // ข้อมูลที่ใช้เช็คชื่อของรายวิชา: รายชื่อ คาบ และวันที่เช็คได้ (เฉพาะภาคปัจจุบัน)

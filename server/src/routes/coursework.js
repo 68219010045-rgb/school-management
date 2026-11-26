@@ -1,12 +1,17 @@
-// คะแนนเก็บของรายวิชา — ต่อท้ายเส้นทาง /api/teacher (ตรวจบทบาทครูแล้วใน teacher.js)
+// คะแนนเก็บของรายวิชา และคะแนนรวมที่คิดจากคะแนนเก็บ — ต่อท้าย /api/teacher (ตรวจบทบาทครูใน teacher.js)
 const express = require('express');
 const { getAdmin } = require('../supabase');
 const { wrap } = require('../middleware');
 const { logChange } = require('../changelog');
-const { scoreItemSchema, scoreMarksSchema } = require('../validation');
+const { scoreMarksSchema } = require('../validation');
+const { gradeFromScore } = require('../grading');
 const { loadTerms } = require('../terms');
 
-const MAX_ITEMS = 30; // 30 รายการ × ห้องใหญ่สุด 33 คน ไม่เกินเพดาน 1,000 แถวของการอ่านครั้งเดียว
+// รายการคะแนนตายตัว ใช้เหมือนกันทุกวิชา รวม 100 คะแนน (ลำดับ = เลข item ที่หน้าเว็บส่งมา เริ่มที่ 1)
+const ITEMS = [
+  ['ใบงานที่ 1', 10], ['ใบงานที่ 2', 10], ['ใบงานที่ 3', 10], ['เก็บคะแนน 1', 10],
+  ['กลางภาค', 20], ['ปลายภาค', 20], ['จิตพิสัย', 20],
+].map(([name, max_score], i) => ({ item: i + 1, name, max_score }));
 const must = ({ data, error }) => { if (error) throw error; return data; };
 
 // รายวิชาของครูคนนี้ พร้อมรายชื่อ และบอกว่าแก้ได้ไหม
@@ -23,19 +28,57 @@ async function context(req, res) {
   };
 }
 
-const itemsOf = async (scheduleId) => must(await getAdmin().from('score_items')
-  .select('id, name, max_score').eq('schedule_id', scheduleId).order('id'));
-
 async function editableContext(req, res) {
   const ctx = await context(req, res);
-  if (ctx && !ctx.editable) { res.status(403).json({ error: 'แก้คะแนนเก็บได้เฉพาะภาคเรียนปัจจุบัน' }); return null; }
+  if (ctx && !ctx.editable) { res.status(403).json({ error: 'แก้คะแนนได้เฉพาะภาคเรียนปัจจุบัน' }); return null; }
   return ctx;
 }
 
-async function ownItem(ctx, req, res) {
-  const item = (await itemsOf(ctx.cls.schedule_id)).find((i) => String(i.id) === req.params.itemId);
-  if (!item) res.status(404).json({ error: 'ไม่พบรายการคะแนนในรายวิชานี้' });
-  return item;
+// แถวในตาราง score_items ของรายการมาตรฐาน จับคู่ด้วยชื่อ (สร้างเมื่อบันทึกคะแนนครั้งแรกของวิชา)
+async function storedItems(scheduleId) {
+  const rows = must(await getAdmin().from('score_items').select('id, name').eq('schedule_id', scheduleId).order('id'));
+  const idOf = new Map();
+  for (const r of rows) if (!idOf.has(r.name)) idOf.set(r.name, r.id);
+  return ITEMS.map((i) => ({ ...i, id: idOf.get(i.name) ?? null }));
+}
+
+async function createMissing(scheduleId, items, actor) {
+  for (const i of items.filter((x) => x.id === null)) {
+    const row = must(await getAdmin().from('score_items')
+      .insert({ schedule_id: scheduleId, name: i.name, max_score: i.max_score, created_by: actor.email }).select('id').single());
+    i.id = row.id;
+  }
+}
+
+async function marksOf(items) {
+  const ids = items.map((i) => i.id).filter((id) => id !== null);
+  return ids.length ? must(await getAdmin().from('score_marks').select('item_id, student_id, score').in('item_id', ids)) : [];
+}
+
+/**
+ * คิดคะแนนรวมและเกรดของนักเรียนที่เพิ่งถูกแก้: มีคะแนนครบทุกรายการ = ผลบวก ไม่ครบ = รอผล
+ * บันทึกประวัติเฉพาะคนที่ค่าเปลี่ยน
+ */
+async function syncTotals(scheduleId, studentIds, items, actor) {
+  const sb = getAdmin();
+  const marks = await marksOf(items);
+  const rows = must(await sb.from('enrollments').select('enrollment_id, student_id, total_score, grade')
+    .eq('schedule_id', scheduleId).in('student_id', studentIds));
+  for (const row of rows) {
+    const mine = marks.filter((m) => m.student_id === row.student_id);
+    const total = mine.length === items.length ? mine.reduce((n, m) => n + m.score, 0) : null;
+    const old = row.total_score === null ? null : Number(row.total_score);
+    if (old === total) continue;
+    const grade = gradeFromScore(total);
+    const { error } = await sb.from('enrollments')
+      .update({ total_score: total, grade, score_status: total === null ? 'pending_current_term' : 'graded' })
+      .eq('enrollment_id', row.enrollment_id);
+    if (error) throw error;
+    await logChange({
+      table: 'enrollments', recordId: row.enrollment_id, action: 'UPDATE', actor,
+      before: { total_score: old, grade: row.grade }, after: { total_score: total, grade },
+    });
+  }
 }
 
 const router = express.Router();
@@ -43,77 +86,60 @@ const router = express.Router();
 router.get('/classes/:id/coursework', wrap(async (req, res) => {
   const ctx = await context(req, res);
   if (!ctx) return;
-  const items = await itemsOf(ctx.cls.schedule_id);
-  const marks = items.length
-    ? must(await getAdmin().from('score_marks').select('item_id, student_id, score').in('item_id', items.map((i) => i.id)))
-    : [];
-  res.json({ class: ctx.cls, editable: ctx.editable, students: ctx.students, items, marks });
-}));
-
-router.post('/classes/:id/coursework', wrap(async (req, res) => {
-  const input = scoreItemSchema.parse(req.body);
-  const ctx = await editableContext(req, res);
-  if (!ctx) return;
-  if ((await itemsOf(ctx.cls.schedule_id)).length >= MAX_ITEMS) return res.status(400).json({ error: `เพิ่มได้ไม่เกิน ${MAX_ITEMS} รายการต่อวิชา` });
-  const item = must(await getAdmin().from('score_items')
-    .insert({ schedule_id: ctx.cls.schedule_id, ...input, created_by: req.user.email }).select('id, name, max_score').single());
-  await logChange({ table: 'score_items', recordId: item.id, action: 'INSERT', actor: req.user, after: { schedule_id: ctx.cls.schedule_id, ...input } });
-  res.status(201).json(item);
-}));
-
-router.delete('/classes/:id/coursework/:itemId', wrap(async (req, res) => {
-  const ctx = await editableContext(req, res);
-  if (!ctx) return;
-  const item = await ownItem(ctx, req, res);
-  if (!item) return;
-  const sb = getAdmin();
-  const marks = must(await sb.from('score_marks').select('student_id, score').eq('item_id', item.id));
-  const { error } = await sb.from('score_items').delete().eq('id', item.id); // คะแนนในรายการถูกลบตาม (cascade)
-  if (error) throw error;
-  await logChange({
-    table: 'score_items', recordId: item.id, action: 'DELETE', actor: req.user,
-    before: { schedule_id: ctx.cls.schedule_id, name: item.name, max_score: item.max_score, scores: Object.fromEntries(marks.map((m) => [m.student_id, m.score])) },
+  const items = await storedItems(ctx.cls.schedule_id);
+  const itemOf = new Map(items.map((i) => [i.id, i.item]));
+  res.json({
+    class: ctx.cls, editable: ctx.editable, students: ctx.students,
+    items: items.map(({ item, name, max_score }) => ({ item, name, max_score })),
+    marks: (await marksOf(items)).map((m) => ({ item: itemOf.get(m.item_id), student_id: m.student_id, score: m.score })),
   });
-  res.json({ deleted: item.id });
 }));
 
-// PUT { records: [{ student_id, score|null }] } — null = ล้างคะแนน
-router.put('/classes/:id/coursework/:itemId', wrap(async (req, res) => {
+// PUT { records: [{ item, student_id, score|null }] } — บันทึกหลายช่องพร้อมกัน · null = ล้างคะแนน
+router.put('/classes/:id/coursework', wrap(async (req, res) => {
   const { records } = scoreMarksSchema.parse(req.body);
   const ctx = await editableContext(req, res);
   if (!ctx) return;
-  const item = await ownItem(ctx, req, res);
-  if (!item) return;
   const enrolled = new Set(ctx.students.map((s) => s.student_id));
-  if (new Set(records.map((r) => r.student_id)).size !== records.length || records.some((r) => !enrolled.has(r.student_id))) {
-    return res.status(400).json({ error: 'มีรหัสนักเรียนซ้ำ หรือไม่ได้ลงทะเบียนวิชานี้' });
+  // ตรวจทุกช่องก่อนเขียน
+  const keys = new Set(records.map((r) => `${r.item}|${r.student_id}`));
+  if (keys.size !== records.length || records.some((r) => !enrolled.has(r.student_id))) {
+    return res.status(400).json({ error: 'มีช่องคะแนนซ้ำ หรือนักเรียนไม่ได้ลงทะเบียนวิชานี้' });
   }
-  if (records.some((r) => r.score !== null && r.score > item.max_score)) {
-    return res.status(400).json({ error: `คะแนนต้องไม่เกินคะแนนเต็ม ${item.max_score}` });
-  }
+  const over = records.find((r) => r.score !== null && r.score > ITEMS[r.item - 1].max_score);
+  if (over) return res.status(400).json({ error: `${over.student_id}: ${ITEMS[over.item - 1].name} ต้องไม่เกิน ${ITEMS[over.item - 1].max_score} คะแนน` });
 
   const sb = getAdmin();
-  const before = new Map(must(await sb.from('score_marks').select('student_id, score').eq('item_id', item.id)).map((m) => [m.student_id, m.score]));
-  const changed = records.filter((r) => (before.get(r.student_id) ?? null) !== r.score);
-  const set = changed.filter((r) => r.score !== null);
-  const clear = changed.filter((r) => r.score === null).map((r) => r.student_id);
+  const items = await storedItems(ctx.cls.schedule_id);
+  const before = new Map((await marksOf(items)).map((m) => [`${m.item_id}|${m.student_id}`, m.score]));
+  const old = (r) => before.get(`${items[r.item - 1].id}|${r.student_id}`) ?? null;
+  const changed = records.filter((r) => old(r) !== r.score);
+  if (!changed.length) return res.json({ saved: 0 });
+  await createMissing(ctx.cls.schedule_id, items, req.user);
+
+  const now = new Date().toISOString();
+  const set = changed.filter((r) => r.score !== null).map((r) => ({
+    item_id: items[r.item - 1].id, student_id: r.student_id, score: r.score, updated_by: req.user.email, updated_at: now,
+  }));
   if (set.length) {
-    const now = new Date().toISOString();
-    const { error } = await sb.from('score_marks').upsert(
-      set.map((r) => ({ item_id: item.id, ...r, updated_by: req.user.email, updated_at: now })), { onConflict: 'item_id,student_id' });
+    const { error } = await sb.from('score_marks').upsert(set, { onConflict: 'item_id,student_id' });
     if (error) throw error;
   }
-  if (clear.length) {
-    const { error } = await sb.from('score_marks').delete().eq('item_id', item.id).in('student_id', clear);
-    if (error) throw error;
-  }
-  if (changed.length) {
+  for (const item of new Set(changed.map((r) => r.item))) {
+    const itemId = items[item - 1].id;
+    const mine = changed.filter((r) => r.item === item);
+    const clear = mine.filter((r) => r.score === null).map((r) => r.student_id);
+    if (clear.length) {
+      const { error } = await sb.from('score_marks').delete().eq('item_id', itemId).in('student_id', clear);
+      if (error) throw error;
+    }
     await logChange({
-      table: 'score_marks', recordId: item.id, action: 'UPDATE', actor: req.user,
-      before: Object.fromEntries(changed.map((r) => [r.student_id, before.get(r.student_id) ?? null])),
-      after: Object.fromEntries(changed.map((r) => [r.student_id, r.score])),
+      table: 'score_marks', recordId: itemId, action: 'UPDATE', actor: req.user,
+      before: Object.fromEntries(mine.map((r) => [r.student_id, old(r)])),
+      after: Object.fromEntries(mine.map((r) => [r.student_id, r.score])),
     });
   }
+  await syncTotals(ctx.cls.schedule_id, [...new Set(changed.map((r) => r.student_id))], items, req.user);
   res.json({ saved: changed.length });
 }));
 

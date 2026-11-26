@@ -11,7 +11,11 @@ import AtRisk from './views/AtRisk';
 import Tasks from './views/Tasks';
 import ChangeLog from './views/ChangeLog';
 import MyClasses from './views/MyClasses';
+import ScorePage from './views/ScorePage';
+import AttendancePage from './views/AttendancePage';
 import MyInfo from './views/MyInfo';
+import MyHistory from './views/MyHistory';
+import MyScores from './views/MyScores';
 import TeacherDashboard from './views/TeacherDashboard';
 
 // ต้องล็อกอินก่อน (Y2.4) และตรวจบทบาทที่ได้รับอนุญาต
@@ -59,6 +63,10 @@ export default function App() {
             <Route path="/enrollments" element={<Protected roles={STAFF}><Enrollments /></Protected>} />
             <Route path="/teacher-dashboard" element={<Protected roles={['teacher']}><TeacherDashboard /></Protected>} />
             <Route path="/my-classes" element={<Protected roles={['teacher']}><MyClasses /></Protected>} />
+            <Route path="/my-classes/:scheduleId/scores" element={<Protected roles={['teacher']}><ScorePage /></Protected>} />
+            <Route path="/my-classes/:scheduleId/attendance" element={<Protected roles={['teacher']}><AttendancePage /></Protected>} />
+            <Route path="/my-history" element={<Protected roles={['student']}><MyHistory /></Protected>} />
+            <Route path="/my-scores" element={<Protected roles={['student']}><MyScores /></Protected>} />
             <Route path="/my-info" element={<Protected roles={['student']}><MyInfo /></Protected>} />
             <Route path="/at-risk" element={<Protected roles={['admin', 'executive']}><AtRisk /></Protected>} />
             <Route path="/tasks" element={<Protected roles={['admin', 'executive']}><Tasks /></Protected>} />

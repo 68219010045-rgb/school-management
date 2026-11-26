@@ -101,6 +101,18 @@ code { background: var(--surface-2); border: 1px solid var(--border-soft); paddi
 input, select, textarea { font: inherit; padding: .4rem .7rem; min-height: 40px; border: 1px solid var(--border); border-radius: 0; background: var(--surface); color: var(--text); width: 100%; }
 input:hover, select:hover, textarea:hover { border-color: var(--muted); }
 table select { min-height: 32px; padding: .1rem .4rem; }
+
+/* สมุดคะแนน: กว้างพอดีการ์ด ไม่ต้องเลื่อนด้านข้างบนจอคอมพิวเตอร์ */
+.gradebook { table-layout: fixed; font-size: .8rem; line-height: 1.35; }
+.gradebook col.g-who { width: 17%; }
+.gradebook col.g-watch { width: 11%; }
+.gradebook col.g-num { width: 6.5%; }
+.gradebook th, .gradebook td { padding: .25rem .2rem; overflow-wrap: anywhere; vertical-align: middle; }
+.gradebook th { white-space: normal; vertical-align: bottom; }
+.gradebook small { display: block; font-size: .72rem; font-weight: 400; color: var(--muted); }
+.gradebook .tag { font-size: .72rem; padding: 0 .25rem; }
+.gradebook select { width: 100%; min-height: 28px; padding: 0 .1rem; }
+@media (max-width: 760px) { .gradebook { min-width: 720px; } }
 .field.has-error input, .field.has-error select, .field.has-error textarea { border: 2px solid var(--danger); }
 .err { color: var(--danger); }
 .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }

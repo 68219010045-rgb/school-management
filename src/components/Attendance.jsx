@@ -33,6 +33,11 @@ function Sheet({ scheduleId, data }) {
     setDrafts((d) => ({ ...d, [period]: next }));
     setState({ busy: false, error: '', done: '' });
   };
+  const toggle = (id, m) => {
+    const next = { ...marks };
+    if (next[id] === m) delete next[id]; else next[id] = m;
+    change(next);
+  };
   const allPresent = () => change(Object.fromEntries(data.students.map((s) => [s.student_id, 'มา'])));
 
   async function save() {
@@ -61,6 +66,7 @@ function Sheet({ scheduleId, data }) {
       {copied && <Alert type="info">คัดลอกผลจากคาบก่อนหน้ามาให้ แก้เฉพาะคนที่เปลี่ยนแล้วกดบันทึก (คาบนี้ยังไม่ถูกบันทึก)</Alert>}
       <div className="actions" style={{ margin: '.5rem 0' }}>
         <button type="button" className="btn small" onClick={allPresent}>มาทั้งหมด</button>
+        <span className="muted small">กดปุ่มที่เลือกแล้วอีกครั้งเพื่อเปลี่ยน</span>
       </div>
       <div className="table-wrap">
         <table>
@@ -73,9 +79,11 @@ function Sheet({ scheduleId, data }) {
                 <td>{s.full_name}</td>
                 <td>
                   <div className="actions" role="group" aria-label={`สถานะของ ${s.student_id}`}>
-                    {MARKS.map((m) => (
+                    {/* เลือกแล้วเหลือปุ่มเดียว กดปุ่มนั้นอีกครั้งเพื่อเลือกใหม่ */}
+                    {MARKS.filter((m) => !marks[s.student_id] || marks[s.student_id] === m).map((m) => (
                       <button key={m} type="button" className={`btn small${marks[s.student_id] === m ? ' primary' : ''}`}
-                        aria-pressed={marks[s.student_id] === m} onClick={() => change({ ...marks, [s.student_id]: m })}>{m}</button>
+                        aria-pressed={marks[s.student_id] === m} title={marks[s.student_id] ? 'กดเพื่อเลือกใหม่' : undefined}
+                        onClick={() => toggle(s.student_id, m)}>{m}</button>
                     ))}
                   </div>
                 </td>

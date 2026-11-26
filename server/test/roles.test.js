@@ -118,33 +118,8 @@ test('ครูและนักเรียนเข้าเส้นทา�
   assert.equal((await call('unlinked', '/api/teacher/classes')).status, 403);
 });
 
-test('ครูกรอกคะแนนวิชาตัวเองได้ คิดเกรดให้ และบันทึกประวัติ', async () => {
-  const res = await call('teacher', '/api/teacher/enrollments/E-MINE', { total_score: 76 });
-  assert.equal(res.status, 200);
-  assert.equal(res.body.grade, 3.5);
-  assert.equal(res.body.score_status, 'graded');
-  assert.equal(db.change_log.length, 1);
-  assert.equal(db.change_log[0].actor_email, 'teacher@t.example');
-  assert.equal(db.change_log[0].after_data.total_score, 76);
 
-  const cleared = await call('teacher', '/api/teacher/enrollments/E-MINE', { total_score: null });
-  assert.equal(cleared.body.score_status, 'pending_current_term');
-  assert.equal(cleared.body.grade, null);
-});
 
-test('ครูแก้คะแนนวิชาคนอื่นหรือภาคที่จบแล้วไม่ได้', async () => {
-  assert.equal((await call('teacher', '/api/teacher/enrollments/E-OTHER', { total_score: 80 })).status, 404);
-  assert.equal((await call('teacher', '/api/teacher/enrollments/E-OLD', { total_score: 80 })).status, 403);
-  assert.equal((await call('teacher', '/api/teacher/classes/OTHER')).status, 404);
-  assert.ok(db.enrollments.every((e) => e.total_score === null));
-  assert.equal(db.change_log.length, 0);
-});
-
-test('คะแนนผิดรูปแบบถูกปฏิเสธ (400)', async () => {
-  for (const bad of [{ total_score: -1 }, { total_score: 101 }, { total_score: 79.5 }, { total_score: '80' }, { nothing: 1 }]) {
-    assert.equal((await call('teacher', '/api/teacher/enrollments/E-MINE', bad)).status, 400, JSON.stringify(bad));
-  }
-});
 
 test('นักเรียนเห็นเฉพาะของตัวเอง และไม่เห็นป้ายเสี่ยง', async () => {
   const res = await call('student', '/api/student/me?student_id=S00002');
@@ -217,26 +192,48 @@ test('แดชบอร์ดครูสรุปเฉพาะวิชา�
   assert.deepEqual(after.absentees.map((a) => [a.student_id, a.periods]), [['S00001', 1]]);
 });
 
-test('คะแนนเก็บ: ครูจัดการเฉพาะวิชาตัวเอง นักเรียนเห็นของตัวเอง และไม่กระทบคะแนนรวม', async () => {
-  const path = '/api/teacher/classes/MINE/coursework';
-  const item = await call('teacher', path, { name: 'ใบงาน 1', max_score: 10 }, 'POST');
-  assert.equal(item.status, 201);
-  const put = (score, student_id = 'S00001') => call('teacher', `${path}/${item.body.id}`, { records: [{ student_id, score }] });
-  assert.equal((await put(8)).status, 200);
-  for (const bad of [await put(11), await put(-1), await put(2.5), await put(5, 'S00002')]) assert.equal(bad.status, 400);
+
+const WORK = '/api/teacher/classes/MINE/coursework';
+const putMarks = (...records) => call('teacher', WORK, { records });
+const mark = (item, score, student_id = 'S00001') => ({ item, student_id, score });
+const mine = () => db.enrollments.find((e) => e.enrollment_id === 'E-MINE');
+
+test('มีรายการคะแนนตายตัว 7 ช่องรวม 100 โดยครูไม่ต้องสร้าง และอ่านอย่างเดียวไม่เขียนอะไร', async () => {
+  const res = await call('teacher', WORK);
+  assert.deepEqual(res.body.items.map((i) => [i.name, i.max_score]), [['ใบงานที่ 1', 10], ['ใบงานที่ 2', 10], ['ใบงานที่ 3', 10],
+    ['เก็บคะแนน 1', 10], ['กลางภาค', 20], ['ปลายภาค', 20], ['จิตพิสัย', 20]]);
+  assert.equal(res.body.items.reduce((n, i) => n + i.max_score, 0), 100);
+  assert.equal(db.score_items.length, 0);
+});
+
+test('กรอกครบทุกช่องจึงรวมคะแนนและคิดเกรด ล้างช่องแล้วกลับเป็นรอผล', async () => {
+  const six = [8, 9, 7, 10, 15, 14].map((score, i) => mark(i + 1, score));
+  assert.equal((await putMarks(...six)).status, 200);
+  assert.equal(mine().total_score, null);
+  assert.equal(db.score_items.length, 7);
+  await putMarks(mark(7, 13));
+  assert.equal(db.score_items.length, 7);                          // ไม่สร้างซ้ำ
+  assert.deepEqual([mine().total_score, mine().grade, mine().score_status], [76, 3.5, 'graded']);
+  assert.ok(db.change_log.some((l) => l.table_name === 'enrollments' && l.after_data.total_score === 76));
 
   const me = await call('student', '/api/student/me');
   const course = me.body.terms[0].courses.find((c) => c.schedule_id === 'MINE');
-  assert.deepEqual(course.coursework.map((i) => [i.name, i.score, i.max_score]), [['ใบงาน 1', 8, 10]]);
-  assert.equal(course.total_score, null);
+  assert.equal(course.coursework.length, 7);
+  assert.equal(course.total_score, 76);
 
-  assert.equal((await call('student', path, { name: 'x', max_score: 1 }, 'POST')).status, 403);
-  assert.equal((await call('teacher', '/api/teacher/classes/OTHER/coursework', { name: 'x', max_score: 1 }, 'POST')).status, 404);
-  assert.equal((await call('teacher', '/api/teacher/classes/OLD/coursework', { name: 'x', max_score: 1 }, 'POST')).status, 403);
+  await putMarks(mark(1, null));
+  assert.deepEqual([mine().total_score, mine().grade, mine().score_status], [null, null, 'pending_current_term']);
+});
 
-  assert.equal((await put(null)).status, 200);
-  assert.equal(db.score_marks.length, 0);
-  assert.equal((await call('teacher', `${path}/${item.body.id}`, undefined, 'DELETE')).status, 200);
-  assert.equal(db.score_items.length, 0);
-  assert.deepEqual(db.change_log.map((l) => l.action), ['INSERT', 'UPDATE', 'UPDATE', 'DELETE']);
+test('คะแนนผิดและวิชาที่ไม่ใช่ของตัวเองถูกปฏิเสธโดยไม่เขียนอะไร', async () => {
+  for (const bad of [mark(1, 11), mark(5, 21), mark(1, -1), mark(1, 2.5), mark(1, '5'), mark(8, 1), mark(0, 1), mark(1, 5, 'S00002')]) {
+    assert.equal((await putMarks(bad)).status, 400, JSON.stringify(bad));
+  }
+  assert.equal((await putMarks(mark(1, 5), mark(1, 6))).status, 400);
+  const records = [mark(1, 5)];
+  assert.equal((await call('student', WORK, { records })).status, 403);
+  assert.equal((await call('teacher', '/api/teacher/classes/OTHER/coursework', { records })).status, 404);
+  assert.equal((await call('teacher', '/api/teacher/classes/OLD/coursework', { records })).status, 403);
+  assert.equal((await call('teacher', WORK, { name: 'เพิ่มเอง', max_score: 5 }, 'POST')).status, 404);
+  assert.equal(db.score_items.length + db.score_marks.length, 0);
 });

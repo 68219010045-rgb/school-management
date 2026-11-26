@@ -7,6 +7,8 @@ const NAV = [
     { to: '/teacher-dashboard', label: 'แดชบอร์ดครู', roles: ['teacher'] },
     { to: '/my-classes', label: 'วิชาที่สอน', roles: ['teacher'] },
     { to: '/my-info', label: 'ข้อมูลของฉัน', roles: ['student'] },
+    { to: '/my-scores', label: 'คะแนนเก็บ', roles: ['student'] },
+    { to: '/my-history', label: 'ประวัติการขาด ลา มาสาย', roles: ['student'] },
   ] },
   { group: 'ภาพรวม', items: [{ to: '/dashboard', label: 'แดชบอร์ดผู้บริหาร', roles: ['admin', 'executive'] }] },
   { group: 'ข้อมูลสถานศึกษา', items: [
@@ -29,7 +31,7 @@ const NAV = [
 const TITLES = {
   '/dashboard': 'แดชบอร์ดผู้บริหาร', '/students': 'นักเรียน', '/students/new': 'เพิ่มนักเรียน', '/students/import': 'นำเข้าจากไฟล์ CSV',
   '/enrollments': 'ผลการเรียน', '/at-risk': 'นักเรียนเสี่ยง', '/tasks': 'ข้อค้นพบ → งานที่ควรทำ',
-  '/changelog': 'ประวัติการแก้ไข', '/teacher-dashboard': 'แดชบอร์ดครู', '/my-classes': 'วิชาที่สอน', '/my-info': 'ข้อมูลของฉัน',
+  '/changelog': 'ประวัติการแก้ไข', '/teacher-dashboard': 'แดชบอร์ดครู', '/my-classes': 'วิชาที่สอน', '/my-info': 'ข้อมูลของฉัน', '/my-history': 'ประวัติการขาด ลา มาสาย', '/my-scores': 'คะแนนเก็บ',
 };
 
 const safe = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } } };
@@ -54,9 +56,12 @@ export default function Layout() {
   useEffect(() => { if (window.innerWidth < 1000) setCollapsed(true); }, [pathname]); // ปิดเมนูบนมือถือหลังเปลี่ยนหน้า
   const toggleNav = () => setCollapsed((c) => { safe.set('school_nav', c ? '1' : '0'); return !c; });
 
-  const title = TITLES[pathname] || (pathname.endsWith('/edit') ? 'แก้ไขข้อมูลนักเรียน' : 'หน้านี้');
+  const inClass = pathname.startsWith('/my-classes/');
+  const classTitle = inClass && (pathname.endsWith('/scores') ? 'คะแนน' : pathname.endsWith('/attendance') ? 'เช็คชื่อ' : '');
+  const title = TITLES[pathname] || (classTitle || (pathname.endsWith('/edit') ? 'แก้ไขข้อมูลนักเรียน' : 'หน้านี้'));
   const crumbs = [{ to: '/', label: 'หน้าหลัก' }];
   if (pathname.startsWith('/students/') && pathname !== '/students') crumbs.push({ to: '/students', label: 'นักเรียน' });
+  if (inClass) crumbs.push({ to: '/my-classes', label: 'วิชาที่สอน' });
   if (pathname !== HOME[user.role]) crumbs.push({ label: title });
 
   return (

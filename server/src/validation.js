@@ -44,12 +44,6 @@ const taskSchema = z.object({
 });
 const taskUpdateSchema = taskSchema.partial();
 
-// คะแนนที่ครูกรอก: จำนวนเต็ม 0–100 หรือ null (ล้างคะแนน)
-const scoreSchema = z.object({
-  total_score: z.number({ invalid_type_error: 'คะแนนต้องเป็นตัวเลข', required_error: 'กรุณาระบุคะแนน' })
-    .int('คะแนนต้องเป็นจำนวนเต็ม').min(0, 'คะแนนต้องไม่ต่ำกว่า 0').max(100, 'คะแนนต้องไม่เกิน 100').nullable(),
-});
-
 // เช็คชื่อหนึ่งคาบ
 const attendanceSchema = z.object({
   date: dateStr('วันที่ต้องเป็นรูปแบบ YYYY-MM-DD'),
@@ -61,15 +55,12 @@ const attendanceSchema = z.object({
 });
 
 // คะแนนเก็บ
-const scoreItemSchema = z.object({
-  name: cleanText(80),
-  max_score: z.number({ invalid_type_error: 'คะแนนเต็มต้องเป็นตัวเลข' }).int('คะแนนเต็มต้องเป็นจำนวนเต็ม').min(1, 'คะแนนเต็มต้องอย่างน้อย 1').max(100, 'คะแนนเต็มต้องไม่เกิน 100'),
-});
 const scoreMarksSchema = z.object({
   records: z.array(z.object({
+    item: z.number().int().min(1).max(7),
     student_id: z.string().regex(/^S[0-9]{5}$/, 'รหัสนักเรียนไม่ถูกต้อง'),
     score: z.number({ invalid_type_error: 'คะแนนต้องเป็นตัวเลข' }).int('คะแนนต้องเป็นจำนวนเต็ม').min(0, 'คะแนนต้องไม่ติดลบ').max(100).nullable(),
-  })).min(1, 'ไม่มีรายการคะแนน').max(100),
+  })).min(1, 'ไม่มีรายการคะแนน').max(1000),
 });
 
 const loginSchema = z.object({
@@ -94,5 +85,5 @@ const sanitizeSearch = (q) => String(q || '').replace(/[,()*%_\\:."']/g, ' ').tr
 
 module.exports = {
   LEVELS, STATUSES, GENDERS, TERM_RE, studentSchema, studentUpdateSchema, taskSchema, taskUpdateSchema,
-  loginSchema, pageSchema, dashFilterSchema, sanitizeSearch, scoreSchema, attendanceSchema, scoreItemSchema, scoreMarksSchema,
+  loginSchema, pageSchema, dashFilterSchema, sanitizeSearch, attendanceSchema, scoreMarksSchema,
 };

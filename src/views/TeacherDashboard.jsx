@@ -5,7 +5,7 @@ import { toThaiDate } from '../utils/thaiDate';
 
 const PENDING_SHOWN = 8;
 const periodRange = (c) => `คาบ ${c.start_period}–${c.start_period + c.periods - 1}`;
-const link = (id, mode, date) => `/my-classes?class=${id}&mode=${mode}${date ? `&date=${date}` : ''}`;
+const attendanceLink = (id, date) => `/my-classes/${id}/attendance?date=${date}`;
 
 function Stat({ label, value, unit, note }) {
   return (
@@ -53,7 +53,7 @@ export default function TeacherDashboard() {
                 {data.today_classes.map((c) => (
                   <tr key={c.schedule_id}>
                     <td>{periodRange(c)}</td><td>{name(c)}</td><td>{c.class_group}</td><td>{c.room_id || '–'}</td>
-                    <td><Link className="btn small" to={link(c.schedule_id, 'attendance', data.today)}>เช็คชื่อ</Link></td>
+                    <td><Link className="btn small" to={attendanceLink(c.schedule_id, data.today)}>เช็คชื่อ</Link></td>
                   </tr>
                 ))}
               </tbody>
@@ -74,7 +74,7 @@ export default function TeacherDashboard() {
                     <tr key={`${p.schedule_id}-${p.date}`}>
                       <td>{toThaiDate(p.date)}</td><td>{name(byId.get(p.schedule_id))} · {byId.get(p.schedule_id).class_group}</td>
                       <td>{p.periods.join(', ')}</td>
-                      <td><Link className="btn small" to={link(p.schedule_id, 'attendance', p.date)}>เช็คชื่อ</Link></td>
+                      <td><Link className="btn small" to={attendanceLink(p.schedule_id, p.date)}>เช็คชื่อ</Link></td>
                     </tr>
                   ))}
                 </tbody>
@@ -97,7 +97,7 @@ export default function TeacherDashboard() {
                   <td className="num">{c.periods_checked}/{c.periods_total}</td>
                   <td className="num">{c.attend_rate === null ? '–' : `${fmt(c.attend_rate, 1)}%`}</td>
                   <td className="num">{c.graded}/{c.students}</td>
-                  <td><Link className="btn small" to={link(c.schedule_id, 'scores')}>กรอกคะแนน</Link></td>
+                  <td><Link className="btn small" to={`/my-classes/${c.schedule_id}/scores`}>กรอกคะแนน</Link></td>
                 </tr>
               ))}
             </tbody>
