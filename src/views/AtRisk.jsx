@@ -18,7 +18,7 @@ export default function AtRisk() {
       <PageHeader title="นักเรียนเสี่ยง" subtitle="รายชื่อจากภาค 1/2569 แสดงด้วยรหัสนักเรียนเท่านั้น ส่งต่อให้ครูที่ปรึกษา" />
       <Alert type="warn" title="ข้อจำกัด:">เกณฑ์ (มาเรียน 70%/80% · GPA 1.50/2.00) ทีมข้อมูลกำหนดเอง ไม่มีกฎในการ์ดข้อมูล · ภาค 2/2569 ยังไม่จบ “แนวโน้มภาคปัจจุบัน” อาจดีขึ้นเพราะเป็นช่วงต้นภาค</Alert>
       <section className="card" aria-labelledby="risk-h">
-        <header>
+        <header className="sticky-filters">
           <h2 id="risk-h">รายชื่อ <span className="count">({data ? fmt(data.total) : '…'})</span></h2>
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="tier" className="sr-only">ระดับความเสี่ยง</label>

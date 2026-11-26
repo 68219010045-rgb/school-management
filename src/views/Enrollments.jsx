@@ -26,7 +26,7 @@ export default function Enrollments() {
       <PageHeader title="ผลการเรียน" subtitle="รายการลงทะเบียนเรียนและคะแนน (แสดงด้วยรหัสนักเรียน)" />
       <section className="card" aria-labelledby="enr-h">
         <header><h2 id="enr-h">รายการลงทะเบียน <span className="count">({data ? fmt(data.total) : '…'})</span></h2></header>
-        <div className="filters">
+        <div className="filters sticky-filters">
           <div className="field">
             <label htmlFor="term">ภาคเรียน</label>
             <select id="term" value={termId} onChange={(e) => { setTermId(e.target.value); setPage(1); }}>

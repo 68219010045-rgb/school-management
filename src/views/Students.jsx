@@ -59,7 +59,7 @@ export default function Students() {
           </div>
         </header>
 
-        <div className="filters" role="search" aria-label="ค้นหาและกรอง">
+        <div className="filters sticky-filters" role="search" aria-label="ค้นหาและกรอง">
           <div className="field grow">
             <label htmlFor="q">ค้นหา ({isAdmin ? 'รหัสหรือชื่อ' : 'รหัสนักเรียน'})</label>
             <input id="q" type="search" value={q} onChange={(e) => setQ(e.target.value)} maxLength={60} placeholder={isAdmin ? 'เช่น S65001 หรือ ชื่อ' : 'เช่น S65001'} />

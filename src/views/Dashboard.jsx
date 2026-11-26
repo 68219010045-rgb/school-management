@@ -56,7 +56,7 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      <section className="card filters" aria-label="ตัวกรอง">
+      <section className="card filters sticky-filters" aria-label="ตัวกรอง">
         <div className="field">
           <label htmlFor="f-term">ภาคเรียน</label>
           <select id="f-term" value={termId} onChange={(e) => setTermId(e.target.value)}>
